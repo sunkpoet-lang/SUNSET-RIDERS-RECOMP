@@ -7,7 +7,7 @@ Preserve original authorship, copyright notices and licence texts when exporting
 | [MAME](https://github.com/mamedev/mame) | Guest CPU/chip implementations and board/set reference | Preserve per-file notices and applicable licence texts; exported source hashes and dependency pins are in docs/source-manifest.json |
 | [ymfm](https://github.com/aaronsgiles/ymfm) | Aaron Giles' FM synthesis implementation | Preserve bundled BSD-3-Clause notices |
 | [SDL](https://github.com/libsdl-org/SDL) | SDL3 window, audio and controller facilities | Preserve zlib licence and distribution notices |
-| [recomp-common](https://github.com/tmcleroy/recomp-common) | Tommy McLeroy's shared menu; ForkAde adaptations | Inspected menu sources use GPL-3.0-only; preserve notices and corresponding-source obligations |
+| [recomp-common](https://github.com/tmcleroy/recomp-common) | Tommy McLeroy's shared menu; local adaptations | Inspected menu sources use GPL-3.0-only; preserve notices and corresponding-source obligations |
 | [tmntarcade-decomp](https://github.com/cheviman/tmntarcade-decomp) | Toolchain/reference research | Root BSD-3-Clause notice credits Sebastian Toyos; vendored components retain their own terms |
 | [arcade-decomp](https://github.com/cheviman/arcade-decomp) | Shared analysis/tool infrastructure | Root BSD-3-Clause notice credits Sebastian Toyos; inspect component terms separately |
 

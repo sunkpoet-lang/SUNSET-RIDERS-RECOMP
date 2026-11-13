@@ -1,0 +1,1 @@
+Strict OpenSpec validation, CMake rebuild, nine existing ROM-free tests and git diff --check passed. Changes affect introductory prose and the window caption only. Original upstream copyright and licence notices retained. No commit or push performed.

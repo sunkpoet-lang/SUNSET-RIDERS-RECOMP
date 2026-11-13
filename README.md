@@ -1,6 +1,6 @@
 # Sunset Riders Recomp
 
-Experimental Sunset Riders PC port and recompilation research for ForkAde.
+Experimental Sunset Riders PC port and recompilation research.
 
 **Current implementation:** a native Windows application interpreting the 68000 and Z80 guest CPUs. Full static recompilation is a future goal, not a completed feature. This is a local laboratory prototype, not a finished release.
 

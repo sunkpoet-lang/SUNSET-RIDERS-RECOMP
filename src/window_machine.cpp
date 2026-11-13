@@ -366,7 +366,7 @@ int main(int argc,char**argv){try{
     if(!stop||stop>sunset_session::max_frames||(qa&&(scenario.empty()||stop<1500||stop>sunset_session::qa_frames)))throw std::runtime_error("invalid laboratory window bounds");
     auto machine=load_window_machine(scenario);if(soak_test){long_soak(*machine,capture);return 0;}if(assist_test){assist_integration(*machine);return 0;}SDL_SetMainReady();sdl_require(SDL_Init(SDL_INIT_VIDEO|SDL_INIT_AUDIO|SDL_INIT_GAMEPAD),"SDL init");
     struct SdlLifetime {~SdlLifetime(){SDL_Quit();}} sdl_lifetime;
-    auto*w=SDL_CreateWindow("Sunset Riders EAC 4P | ForkAde laboratorio | sesion extendida",864,804,SDL_WINDOW_RESIZABLE);sdl_require(w!=nullptr,"window");
+    auto*w=SDL_CreateWindow("Sunset Riders EAC 4P | laboratorio | sesion extendida",864,804,SDL_WINDOW_RESIZABLE);sdl_require(w!=nullptr,"window");
     auto*r=SDL_CreateRenderer(w,nullptr);sdl_require(r!=nullptr,"renderer");SDL_SetRenderVSync(r,0);SDL_SetRenderLogicalPresentation(r,576,536,SDL_LOGICAL_PRESENTATION_LETTERBOX);
     auto*texture=SDL_CreateTexture(r,SDL_PIXELFORMAT_RGB24,SDL_TEXTUREACCESS_STREAMING,288,224);sdl_require(texture!=nullptr,"framebuffer texture");SDL_SetTextureScaleMode(texture,SDL_SCALEMODE_NEAREST);
     std::string icon=std::string(SDL_GetBasePath())+"title-icon.bmp";if(auto*s=SDL_LoadBMP(icon.c_str())){SDL_SetWindowIcon(w,s);SDL_DestroySurface(s);}

@@ -4,6 +4,7 @@
 
 ## [2026-11-13] - Extended session evidence
 
+- docs: present the project independently in introductory prose and the window caption while retaining third-party notices.
 - build: export standalone Windows runtime sources, pinned dependency notices, CMake generation and read-only ROM launch with regression checks.
 - docs: record the eight-minute local session test, memory observations and provisional runtime profile.
 

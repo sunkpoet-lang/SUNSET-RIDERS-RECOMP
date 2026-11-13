@@ -336,7 +336,7 @@
     {
       "file": "src/window_machine.cpp",
       "source_sha256": "cc62b1d38e3b2c1714facb45cd1fd81bfe4ab4c82379768d3469bc3f4a33869d",
-      "sha256": "cc62b1d38e3b2c1714facb45cd1fd81bfe4ab4c82379768d3469bc3f4a33869d"
+      "sha256": "1f92aaa5ecb180ccedc48270014971168944b036fd7596ebc9b89b5e989d95e3"
     },
     {
       "file": "src/window_pcm.cpp",
