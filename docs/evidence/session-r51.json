@@ -1,0 +1,95 @@
+{
+  "build_sha256": "78b0922f99b7e7e993fa6514193a54d7cb1ecf52d50bdcf7f7254ed6c703d63d",
+  "set": "ssriders (4 Players ver EAC)",
+  "date": "2026-11-13",
+  "runtime_profile_hours": 12,
+  "full_profile_exercised": false,
+  "headless_simulated_seconds": 480,
+  "result": {
+    "status": "passed",
+    "simulated_seconds": 480,
+    "restore_checks": 1,
+    "post_warmup_peak_growth_bytes": 3391488,
+    "checkpoint_bytes": 439430,
+    "life_decrements": [
+      24,
+      18,
+      18,
+      18
+    ],
+    "native_rejoins": [
+      7,
+      5,
+      5,
+      5
+    ],
+    "stages": [
+      0
+    ],
+    "wall_seconds": 469.723,
+    "headless": true,
+    "full_game_validated": false
+  },
+  "memory_samples": [
+    {
+      "progress_minute": 1,
+      "private_bytes": 19947520,
+      "working_bytes": 27885568,
+      "stage": 0
+    },
+    {
+      "progress_minute": 2,
+      "private_bytes": 19947520,
+      "working_bytes": 27930624,
+      "stage": 0
+    },
+    {
+      "progress_minute": 3,
+      "private_bytes": 19947520,
+      "working_bytes": 27930624,
+      "stage": 0
+    },
+    {
+      "progress_minute": 4,
+      "private_bytes": 19947520,
+      "working_bytes": 27930624,
+      "stage": 0
+    },
+    {
+      "progress_minute": 5,
+      "private_bytes": 19947520,
+      "working_bytes": 27930624,
+      "stage": 0
+    },
+    {
+      "progress_minute": 6,
+      "private_bytes": 19980288,
+      "working_bytes": 27951104,
+      "stage": 0
+    },
+    {
+      "progress_minute": 7,
+      "private_bytes": 23339008,
+      "working_bytes": 30040064,
+      "stage": 0
+    },
+    {
+      "progress_minute": 8,
+      "private_bytes": 23339008,
+      "working_bytes": 30040064,
+      "stage": 0
+    }
+  ],
+  "short_paced_sdl_regression": {
+    "state_audio_continuation": true,
+    "native_rgb_reference_match": true,
+    "bar_mouse_test": true,
+    "audio_queue_resets": 0
+  },
+  "limitations": [
+    "Headless soak is not sustained audible SDL playback",
+    "Observed stages are script-specific, not a complete playthrough",
+    "No internet or four physical-player acceptance inferred",
+    "No runtime source/binary export implied"
+  ]
+}

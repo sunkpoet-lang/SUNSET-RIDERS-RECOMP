@@ -1,0 +1,28 @@
+{
+  "captures": [
+    {
+      "path": "docs/images/title.png",
+      "sha256": "d301ad4dafc2bcfd8337cbc4c641db55e4066e6887e1cba6f155e4f286a9ab76",
+      "set": "ssriders",
+      "variant": "4 Players ver EAC",
+      "capture_date": "2026-11-12",
+      "frame_count": 3720,
+      "binary_sha256": "2cbf907c5b26c333bc062220d3c0e9195b6dcba78f715440e52abf5444290d85",
+      "method": "own local diagnostic; scripted inputs; no online",
+      "limitations": "not independent MAME or complete-game acceptance",
+      "rights": "original game artwork; demonstration only, not under project code licence"
+    },
+    {
+      "path": "docs/images/four-player.png",
+      "sha256": "83ffa008422f4400667a35c92c660cf6abdf282666987f45fe547a9664381098",
+      "set": "ssriders",
+      "variant": "4 Players ver EAC",
+      "capture_date": "2026-11-12",
+      "frame_count": 1500,
+      "binary_sha256": "9fef779675514c2bcb2e1b6489a6c3993962a7654926cf4faf042248fff9b3b7",
+      "method": "own local diagnostic; scripted inputs; no online",
+      "limitations": "not independent MAME or complete-game acceptance",
+      "rights": "original game artwork; demonstration only, not under project code licence"
+    }
+  ]
+}
