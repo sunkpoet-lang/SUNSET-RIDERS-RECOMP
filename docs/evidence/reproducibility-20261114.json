@@ -1,0 +1,43 @@
+{
+  "date": "2026-11-14",
+  "status": "passed",
+  "source": {
+    "clone_url": "https://github.com/sunkpoet-lang/SUNSET-RIDERS-RECOMP.git",
+    "commit": "5c1d600487bbcbc9e2680678ffb247c7505a6531",
+    "fresh_https_clone": true,
+    "tracked_worktree_unchanged": true,
+    "canonical_source_files_verified": 135,
+    "historical_hashes_changed_only_by_line_endings": 48,
+    "laboratory_objects_reused": false,
+    "manifest_note": "Original manifest records Windows export bytes; git_sha256 additionally identifies the LF Git blob bytes."
+  },
+  "environment": {
+    "platform": "Windows x64, MSYS2 UCRT64",
+    "gcc": "16.2.0",
+    "cmake": "4.4.4",
+    "SDL3": "3.4.18",
+    "python": "3.10.11",
+    "parallel_jobs": 2,
+    "build_directory_contains_space": true,
+    "SDL_drivers": "dummy video/audio for automated check"
+  },
+  "tests": {
+    "rom_free_ctest": {
+      "passed": 9,
+      "total": 9
+    },
+    "own_EAC_game_regression": {
+      "status": "passed",
+      "frames": 1500,
+      "rom_unchanged": true,
+      "accepted_frame_sha256": "4cc295f12f0d6aa5984e414db3875642e50901abe7221e7c0951a6c5d2b6c5de"
+    }
+  },
+  "limits": [
+    "Functional source-build reproduction on one Windows machine, not a second-PC test or byte-identical binary guarantee.",
+    "ROMs, state payloads, captures and machine-specific logs are not included.",
+    "This receipt tests the source revision above; subsequent documentation/manifest clarifications do not extend its runtime test scope.",
+    "Four physical controllers with cheats were confirmed separately by the user; exact executable/model details were not supplied.",
+    "Online implementation remains paused for maintainer handover."
+  ]
+}

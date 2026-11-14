@@ -2,6 +2,12 @@
 
 **Note:** All dates are in Mexico City CST (UTC-6).
 
+## [2026-11-14] - Build guide and development handover
+
+- docs: record fresh HTTPS clone build/test evidence, explicit clone/setup instructions and user-confirmed four-controller play with cheats.
+- docs: explain ROM loading, runtime components, source building, references and upstream credits.
+- docs: distinguish reported local gameplay, exported sources and separate multiplayer research; record the development pause and remaining integration gates.
+
 ## [2026-11-13] - Extended session evidence
 
 - docs: present the project independently in introductory prose and the window caption while retaining third-party notices.
