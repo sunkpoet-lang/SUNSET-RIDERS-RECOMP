@@ -24,8 +24,10 @@ Install [MSYS2](https://www.msys2.org/) and open its **UCRT64** terminal. After 
 ```sh
 pacman -S --needed git mingw-w64-ucrt-x86_64-gcc \
   mingw-w64-ucrt-x86_64-cmake mingw-w64-ucrt-x86_64-ninja \
-  mingw-w64-ucrt-x86_64-sdl3
+  mingw-w64-ucrt-x86_64-sdl3 mingw-w64-ucrt-x86_64-zlib
 ```
+
+The first configure downloads GekkoNet (online play's rollback library) at a pinned release, checked against its SHA-256; it needs an Internet connection once.
 
 Also install native Windows Python 3.10+ and make it available in this terminal, or use its explicit path in the configure and runner commands. These installation commands are a setup recipe; the reproduction check below used the already installed versions recorded in its receipt, not a freshly installed MSYS2 machine. MSYS2 packages advance over time. See the official [environment guide](https://www.msys2.org/docs/environments/) and [SDL3 package](https://packages.msys2.org/packages/mingw-w64-ucrt-x86_64-sdl3).
 
@@ -61,7 +63,7 @@ cmake --build build-clean --parallel 2
 ctest --test-dir build-clean --output-on-failure
 ```
 
-CMake runs the bundled 68000 and Z80 source generators, compiles the CPU/device libraries and links `build-clean/Sunset-Riders-Lab.exe`. It also copies the title BMP and SDL3 runtime beside the executable. Assertions remain enabled in Release builds.
+CMake runs the bundled 68000 and Z80 source generators, compiles the CPU/device libraries and links `build-clean/Sunset-Riders-Lab.exe`, the online window `build-clean/Sunset-Riders-Online.exe` and the headless `sunset-seat-peer.exe` the online checks use. It also copies the title BMP and SDL3 runtime beside the executables. Assertions remain enabled in Release builds.
 
 The nine configured tests cover the menu, top-bar model, assists, turbo, menu input, session profile, core self-test, embedded icon and ROM loader. They use synthetic fixtures where appropriate and do not prove that a real game was completed.
 

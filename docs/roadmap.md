@@ -1,19 +1,20 @@
 # Roadmap
 
-The current releasable source builds a local Windows runtime. Online features below are planned work, not options available in this build. There is no committed delivery date.
+The source builds the local Windows runtime and an experimental online window. Ticked items are in the source and checked as described; the rest is planned work with no committed delivery date.
 
 ## Four-player rollback online
 
-- [ ] Integrate the rollback adapter with all four input lanes and the full board, sound and video checkpoint state.
-- [ ] Support one or two local players per PC, host-assigned seats and host relay.
-- [ ] Allow a new player to join an available seat during a match; restore a verified common checkpoint before continuing.
-- [ ] Keep the remaining players running when a guest leaves; reject packets from old sessions.
-- [ ] Disable offline cheats, turbo and state-changing menu actions in protected online sessions, and test the restriction.
+- [x] Integrate the rollback adapter with all four input lanes and the board, sound and machine state (rollback's own in-memory state; the video is redrawn, as the game never reads it).
+- [x] Make a frame and a save/load fast enough for rollback at 60 frames a second: the main CPU in event-bounded slices (same game, picture and sound as stepping), state saved and loaded in well under a millisecond.
+- [x] Support one or two local players per PC, host-assigned seats and host relay.
+- [x] Allow a new player to join an available seat during a match: the joining PC rebuilds the state from its own start and the confirmed inputs, and every PC checks it before continuing.
+- [x] Keep the remaining players running when a guest leaves; a host left alone waits for players; packets from old sessions are rejected.
+- [x] Disable offline cheats, turbo, states and pause in online sessions (the menu's online mode).
 - [ ] Preserve confirmed replay inputs and sound through session changes.
 - [ ] Define spectator capacity and behaviour before exposing spectator controls.
-- [ ] Validate complete credits on separate PCs, controller input, disconnect/reconnect, sound continuity and replay playback.
+- [ ] Validate complete credits on separate PCs across the Internet, controller input, disconnect/reconnect, sound continuity and replay playback.
 
-GekkoNet is the rollback foundation being investigated. Separate local experiments inform this work, but they are not evidence of a finished Internet mode in this source tree.
+Rollback runs on GekkoNet. The online checks so far ran on one PC (`tools/online_check.py`, and a tester's four windows with real controllers); they are not yet evidence of play across the Internet.
 
 ## Distribution and compatibility
 

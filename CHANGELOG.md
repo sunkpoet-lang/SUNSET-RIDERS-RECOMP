@@ -8,6 +8,7 @@
 - feat: add Sunset-Riders-Online: rollback for up to four players on up to four PCs (GekkoNet, pinned; the seat layer in src/net), one or two players per PC, joining and leaving during the match, each player's name under their score, and the menu's online mode (no states, cheats, turbo or pause)
 - feat: save and load rollback's own state (CPU, board, sound, clock) in memory in well under a millisecond; frames played again are neither drawn nor heard
 - test: add tools/online_check.py (the sliced loop against stepping with and without rollbacks, four headless PCs joining and leaving, hidden online windows) and the headless sunset-seat-peer it runs
+- docs: explain online play in the README (host, join, seats, controls), mark the online roadmap items now in the source, and record what was checked on one PC and by the tester, and what remains (a match across the Internet, online replays, spectators)
 
 ## [2026-11-14] - Build guide and development handover
 

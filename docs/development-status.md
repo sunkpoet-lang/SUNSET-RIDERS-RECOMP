@@ -6,19 +6,21 @@ Implementation is paused for maintainer handover. This note separates what can b
 
 The standalone export is the r51 Windows interpreted-CPU runtime. Its [source manifest](source-manifest.json), [build validation](evidence/source-export.json) and [extended-session receipt](evidence/session-r51.json) identify that export. Later multiplayer work has not been copied into it simply because the documentation now describes that work.
 
-Local features include four input slots, SDL window/audio/controllers, top bar and overlay, volume, temporary own-session save/load, offline turbo and lives/powerup assists. There is no finished four-player online adapter in this exported build. Its native executable still interprets the 68000 and Z80.
+Local features include four input slots, SDL window/audio/controllers, top bar and overlay, volume, temporary own-session save/load, offline turbo and lives/powerup assists. Since 16 November 2026 the source also builds an experimental online window (next section). The native executables still interpret the 68000 and Z80.
 
 ## Human gameplay report
 
 The tester reported reaching the final-boss encounter, stable sound and gameplay, normal deaths and continues, a physical controller on P1 and keyboard use on P3/P4 between scenes. The tester also confirmed the menu, turbo and cheats in gameplay. On 14 November 2026 a further manual report confirmed that all four physical controllers work with cheats enabled. The executable fingerprint and controller models were not supplied for that report; it is recorded as human acceptance, not an automated device test.
 
-This report belongs to the locally tested laboratory build. The later report supersedes the earlier pending local four-controller acceptance. It does not demonstrate final victory, Internet play, cycle accuracy or acceptance of every rebuilt export. The earlier r51 automated eight-minute soak remains a different piece of evidence.
+This report belongs to the locally tested laboratory build. The later report supersedes the earlier pending local four-controller acceptance. It does not demonstrate final victory, Internet play, cycle accuracy or acceptance of every rebuilt export. The earlier r51 automated eight-minute soak remains a different ## Online in the source (16 November 2026)
 
-## Online belongs to the roadmap
+`Sunset-Riders-Online.exe` plays with rollback for up to four players on up to four PCs (GekkoNet; the seat layer in `src/net`): a host-star room, one or two players per PC, players joining and leaving during the match (a joining PC rebuilds the state from its own start and the confirmed inputs; every PC checks it), a host left alone waiting, every player's name under that player's score, and the menu's online mode (no states, cheats, turbo or pause). Usage is in the [README](../README.md#playing-online-experimental).
 
-The current source build is a local game. Four-player online, mid-game joining/leaving and online replay integration are planned work, described in [the roadmap](roadmap.md). Separate laboratory diagnostics do not make those features available here. No online completion percentage or release date is claimed.
+To make rollback fit in a frame, the main CPU now runs in slices up to the board's next event instead of one step at a time, and reads of the program ROM and work RAM no longer sync the board. On the four-player regression this gives the same game, picture and sound as stepping; `SUNSET_LOCKSTEP=1` keeps the stepped loop, which still matches `tests/native-reference.json` exactly. Two diagnostic counters of that reference changed with the new loop: the main CPU's greatest lookahead (435 to 0 ticks) and the sound CPU's greatest lead (27 to 24). Rollback's own state (about 65 KB: CPU, board, sound and clock) saves and loads in well under a millisecond.
 
-Before a future release, maintainers must integrate full-machine checkpoint/rollback handling, protect online settings, preserve sound and replay continuity, then validate complete games on separate PCs. Offline cheats being confirmed locally does not prove that their online restrictions have been tested.
+Checked on one PC with `tools/online_check.py` (3600 frames with and without rollbacks equal to stepping; four headless PCs joining and leaving with every epoch's checkpoints equal; hidden online windows with four seats) and by the tester with four windows and real controllers on one PC (16 November 2026). Not yet checked: a match across the Internet between separate PCs, long online sessions, replays of online matches and spectators.
+
+ have been tested.
 
 ## Keep the evidence honest
 
