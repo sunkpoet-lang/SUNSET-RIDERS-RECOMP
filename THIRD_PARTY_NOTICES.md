@@ -5,5 +5,8 @@
 - YM2151: ymfm, Aaron Giles, BSD-3-Clause, `third_party/YMFM-LICENSE`.
 - Shared menu: Tommy McLeroy's recomp-common, with local modifications, GPL-3.0-only. Exact exported files are fingerprinted in `docs/source-manifest.json`; all SPDX and author notices are retained.
 - SDL3: zlib licence, `third_party/SDL3-LICENSE`; supplied by the developer's installation.
+- GekkoNet (rollback for online play): Jamie Meyer and contributors, BSD-2-Clause, `third_party/GEKKONET-LICENSE`. Fetched by CMake at the pinned release `v20261024222910-9da2363` (archive SHA-256 `a9001dec8698120fe45b314527d181c403ee92e3a30a03d765d3e792b8c74e1c`), its library only, static, without asio.
+- zlib (checksums of online state): its own licence; supplied by the developer's installation.
+- Online seat layer (`src/net`): from sunkpoet-lang's [cps2recomp](https://github.com/sunkpoet-lang/cps2recomp) fork of Tommy McLeroy's cps2recomp, where the CPS ports' online play uses it; GPL-3.0-only, SPDX notices retained.
 
 The combined host project is distributed under GPL-3.0-only (`LICENSE`); retained third-party files keep their own notices and terms. No licence is granted here to Konami game assets. Approved demonstration PNGs, title-derived ICO and BMP are presentation artwork derived from an identified local game run, credited to Konami; they are not relicensed as GPL code. See `docs/evidence/screenshots.json`. No game ROM or state payload is included.

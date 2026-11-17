@@ -26,7 +26,7 @@ The port is maintained by **sunkpoet-lang**, with community gameplay feedback. I
 
 [The Sunset Riders cheat discussion](https://www.mamecheat.co.uk/forums/viewtopic.php?t=12846) was a research reference for offline assists. No forum script is bundled, and reading a public post is not treated as a licence to redistribute its code.
 
-[GekkoNet](https://github.com/HeatXD/GekkoNet), by Jamie Meyer and contributors, is used in separate rollback research. Its library uses BSD-2-Clause. It is **not currently linked by this repository's exported CMake build**, and its laboratory tests are not a finished online release.
+**Jamie Meyer and GekkoNet contributors.** [GekkoNet](https://github.com/HeatXD/GekkoNet) provides the rollback sessions of online play. CMake fetches its library at a pinned release; its BSD-2-Clause notice is in `third_party/GEKKONET-LICENSE`. The seat room, joining and leaving during a match, and the board's rollback state are this project's, on top of it.
 
 ## Licences, pins and demonstration artwork
 

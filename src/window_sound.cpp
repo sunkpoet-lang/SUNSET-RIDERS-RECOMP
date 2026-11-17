@@ -463,3 +463,24 @@ void boundary_sound_tests(DualSound*s){
 }
 
 void window_audio_sink(DualSound* s,std::function<void(int16_t,int16_t)> cb){s->recording.frames.clear();s->recording.recording_enabled=false;s->recording.sink=std::move(cb);}
+
+// Rollback's in-memory sound states: the same component checkpoint without the
+// ROM fingerprints (a state never leaves this process and is restored only into the sound it came from), and its
+// restore in place, without building a second sound board. The file checkpoint and its validated restore are unchanged.
+SoundCheckpoint* sound_fast_checkpoint(DualSound* s){
+    if(s->stepping)throw std::runtime_error("sound checkpoint inside host execution");
+    const auto& p=s->board.ports;
+    return new SoundCheckpoint{s->cpu.snapshot(),s->board.fm.snapshot(),s->board.pcm.snapshot(),s->board.ram,
+        {p.ports,p.synchronised,p.irq_held,p.nmi_line,p.irq_requests,p.nmi_block_until},
+        {s->elapsed,s->instructions,s->acks,s->requests,s->max_lead,s->board.ticks,s->board.reads,s->board.writes,s->board.unmapped_reads,s->board.unmapped_writes},
+        s->mixer.snapshot(),{0,0},2};
+}
+void sound_fast_restore(DualSound* s,const SoundCheckpoint* c){
+    if(s->stepping||c->schema!=2)throw std::runtime_error("sound restore inside host execution");
+    SunsetStreamingAudio mixer;mixer.restore(c->mixer);
+    s->board.fm.restore_component(c->fm);s->board.pcm.restore_component(c->pcm);s->cpu.restore_component(c->cpu);
+    s->board.ram=c->ram;
+    auto& p=s->board.ports;std::tie(p.ports,p.synchronised,p.irq_held,p.nmi_line,p.irq_requests,p.nmi_block_until)=c->ports;
+    std::tie(s->elapsed,s->instructions,s->acks,s->requests,s->max_lead,s->board.ticks,s->board.reads,s->board.writes,s->board.unmapped_reads,s->board.unmapped_writes)=std::tuple(c->host[0],c->host[1],c->host[2],c->host[3],c->host[4],c->host[5],c->host[6],c->host[7],c->host[8],c->host[9]);
+    s->mixer=mixer;s->recording.begin=s->mixer.next;s->recording.frames.clear();
+}

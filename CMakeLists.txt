@@ -58,7 +58,30 @@ add_executable(Sunset-Riders-Lab ${S}/window_machine.cpp ${CMAKE_CURRENT_BINARY_
 target_include_directories(Sunset-Riders-Lab PRIVATE ${S} ${S}/shared)
 target_compile_definitions(Sunset-Riders-Lab PRIVATE SUNSET_STATE_ENGINE_ID="${ENGINE_ID}")
 target_link_libraries(Sunset-Riders-Lab PRIVATE maincpu soundcpu pcm video ymfm shared_menu SDL3::SDL3 bcrypt psapi)
-foreach(T maincpu soundcpu pcm video ymfm shared_menu Sunset-Riders-Lab)
+# Online play: rollback for up to four players (src/net, the seat match) on GekkoNet (BSD-2-Clause), its library
+# only, static, without asio (the seat layer has its own UDP transport), at a pinned release.
+include(FetchContent)
+set(NO_ASIO_BUILD ON CACHE BOOL "" FORCE)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+FetchContent_Declare(gekkonet
+  URL https://github.com/HeatXD/GekkoNet/archive/refs/tags/v20261024222910-9da2363.tar.gz
+  URL_HASH SHA256=a9001dec8698120fe45b314527d181c403ee92e3a30a03d765d3e792b8c74e1c
+  SOURCE_SUBDIR GekkoLib
+  DOWNLOAD_EXTRACT_TIMESTAMP ON)
+FetchContent_MakeAvailable(gekkonet)
+find_package(ZLIB REQUIRED)
+# The online window, and the headless peer the online checks run (tools/online_check.py)
+add_executable(Sunset-Riders-Online WIN32 ${S}/sunset_online.cpp ${CMAKE_CURRENT_BINARY_DIR}/icon.rc)
+add_executable(sunset-seat-peer ${S}/sunset_seat_peer.cpp)
+foreach(T Sunset-Riders-Online sunset-seat-peer)
+  target_include_directories(${T} PRIVATE ${S} ${S}/shared ${S}/net)
+  target_compile_definitions(${T} PRIVATE SUNSET_STATE_ENGINE_ID="${ENGINE_ID}")
+  target_link_libraries(${T} PRIVATE maincpu soundcpu pcm video ymfm shared_menu SDL3::SDL3 GekkoNet ZLIB::ZLIB bcrypt psapi ws2_32)
+endforeach()
+add_custom_command(TARGET Sunset-Riders-Online POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_SOURCE_DIR}/assets/title-icon.bmp $<TARGET_FILE_DIR:Sunset-Riders-Online>
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:SDL3::SDL3> $<TARGET_FILE_DIR:Sunset-Riders-Online> VERBATIM)
+foreach(T maincpu soundcpu pcm video ymfm shared_menu Sunset-Riders-Lab Sunset-Riders-Online sunset-seat-peer)
   target_compile_definitions(${T} PRIVATE _GLIBCXX_ASSERTIONS)
 endforeach()
 add_custom_command(TARGET Sunset-Riders-Lab POST_BUILD
