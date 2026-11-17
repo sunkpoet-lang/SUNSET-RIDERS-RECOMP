@@ -102,10 +102,11 @@ def seats():
 
 def windows():
     folder = out / 'window'; folder.mkdir(exist_ok=True)
+    for old in folder.glob('replays-*/*.fareplay'): old.unlink()
     port, procs = str(63800 + random.randint(0, 300)), {}
     def run(name, frames, seed, *x):
         start(procs, name, folder, [str(window), *x, '--name', name.capitalize(), '--auto', str(seed), '--frames', str(frames), '--loopback',
-                                     '--log', str(folder / f'{name}.log'), '--capture', str(folder / name)])
+                                     '--log', str(folder / f'{name}.log'), '--capture', str(folder / name), '--replays', str(folder / f'replays-{name}')])
     run('host', 2400, 1, '--host', port, '--players', '4', '--start', '2', '--late'); time.sleep(1.5)
     run('guest', 2400, 2, '--join', f'127.0.0.1:{port}', '--players', '4', '--start', '2'); time.sleep(10)
     run('third', 1500, 3, '--join', f'127.0.0.1:{port}', '--players', '4', '--start', '2', '--locals', '2')
@@ -113,8 +114,17 @@ def windows():
     e = epochs({n: folder / f'{n}.log' for n in procs})
     captures = sorted(f.name for f in folder.glob('*.bmp'))
     exits = {n: q.returncode for n, (q, _) in procs.items()}
-    return {'epochs': e, 'exits': exits, 'captures': captures,
-            'passed': bool(e) and all(x['differ'] == 0 for x in e) and all(v == 0 for v in exits.values()) and len(captures) >= 4}
+    # Every window's replay of the whole match, played back headless: to its end, every checksum matching
+    replays = {}
+    for name in procs:
+        files = sorted((folder / f'replays-{name}').glob('*.fareplay'))
+        if not files: replays[name] = 'missing'; continue
+        q = subprocess.run([str(window), '--replay', str(files[-1]), '--headless'], input=payload, env=env, capture_output=True, creationflags=flags)
+        said = [l for l in q.stderr.decode(errors='replace').splitlines() if l.startswith('replay:')]
+        replays[name] = f'{files[-1].name}: ' + (said[-1] if said else f'exit {q.returncode}')
+    played = all('played to its end' in v and 'matched' in v for v in replays.values())
+    return {'epochs': e, 'exits': exits, 'captures': captures, 'replays': replays,
+            'passed': bool(e) and all(x['differ'] == 0 for x in e) and all(v == 0 for v in exits.values()) and len(captures) >= 4 and played}
 
 report = {}
 for name, check in (('trace', trace), ('seats', seats), ('window', windows)):

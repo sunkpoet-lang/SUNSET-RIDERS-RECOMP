@@ -19,6 +19,8 @@ static std::vector<uint8_t> verified_payload;
 #include "window_machine.cpp"
 #include "seat_match.h"
 #include "seat_board.h"
+#include "sunset_replay.h"
+#include <ctime>
 
 namespace {
 struct Rgb { uint8_t r, g, b; };
@@ -33,13 +35,105 @@ void LocalLanes(WindowControls &controls, SunsetBus &board, unsigned locals, std
         lanes[i] = uint16_t((board.inputs.held[i] & 63) | (((board.inputs.coins >> i) & 1) ? 0x100 : 0));
     board.inputs = before;
 }
+
+// Every seated player's name under that player's money, on a dark strip (an empty seat shows nothing)
+void DrawNames(SDL_Renderer *r, const std::array<std::string, 4> &names, unsigned seats) {
+    SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
+    for (unsigned seat = 0; seat < seats && seat < 4; ++seat) {
+        if (names[seat].empty()) continue;
+        std::string label = names[seat]; if (label.size() > 16) label.resize(16);
+        const float left = float(seat) * 144.0f + 6.0f, width = float(label.size()) * 8.0f + 8.0f;
+        SDL_SetRenderDrawColor(r, 0, 0, 0, 150); SDL_FRect back{left, 76, width, 12}; SDL_RenderFillRect(r, &back);
+        const auto &c = kSeatColour[seat]; SDL_SetRenderDrawColor(r, c.r, c.g, c.b, 255);
+        SDL_RenderDebugText(r, left + 4, 78, label.c_str());
+    }
+}
+void DrawMessage(SDL_Renderer *r, const std::string &text) {
+    if (text.empty()) return;
+    SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
+    const float width = float(std::min<size_t>(text.size(), 64)) * 8.0f + 24.0f;
+    SDL_SetRenderDrawColor(r, 0, 0, 0, 190); SDL_FRect box{(576 - width) / 2, 236, width, 28}; SDL_RenderFillRect(r, &box);
+    SDL_SetRenderDrawColor(r, 255, 220, 80, 255); SDL_RenderDebugText(r, box.x + 12, 246, text.substr(0, 64).c_str());
+}
+std::string LocalTime(const char *format) {
+    const std::time_t now = std::time(nullptr); std::tm local{}; localtime_s(&local, &now);
+    char text[64]; std::strftime(text, sizeof text, format, &local); return text;
+}
+
+// Plays a replay of a match: the machine starts as every match does (its state must be the replay's first one, byte
+// for byte: no state is loaded from the file), then runs every frame's lanes and compares the state's CRC at each
+// checksum. Returns 0 when it plays to its end with every checksum matching, 1 when it stops matching, 6 refused.
+int PlayReplay(ExperimentMachine &m, const std::string &rom, const std::string &path, bool headless, bool hidden, const std::string &capture) {
+    SunsetReplay replay; std::string error;
+    if (!replay.Load(path, error)) { std::fprintf(stderr, "replay: %s\n", error.c_str()); return 6; }
+    if (replay.info.rom != rom) { std::fprintf(stderr, "replay: a replay of another ROM set\n"); return 6; }
+    if (replay.info.identity != SUNSET_REPLAY_IDENTITY) {
+        std::fprintf(stderr, "replay: made with another version of the game's emulation (identity %.12s, this build %.12s)\n", replay.info.identity.c_str(), SUNSET_REPLAY_IDENTITY);
+        return 6;
+    }
+    window_audio_sink(m.sound.get(), [](int16_t, int16_t) {});
+    m.run_until(120ull * SunsetBus::frame_ticks);
+    { std::vector<uint8_t> own; rollback_save(m, own); if (own != replay.state) { std::fprintf(stderr, "replay: it does not start from this game's own start\n"); return 6; } }
+    std::array<std::string, 4> names{}; for (size_t i = 0; i < replay.info.players.size() && i < 4; ++i) names[i] = replay.info.players[i];
+    std::map<uint64_t, uint32_t> checks(replay.checks.begin(), replay.checks.end());
+    uint64_t matched = 0, frame = 0, stopped = UINT64_MAX;
+    if (auto it = checks.find(0); it != checks.end()) { if (uint32_t(crc32(0, replay.state.data(), uInt(replay.state.size()))) == it->second) ++matched; else stopped = 0; }
+    SDL_Window *w = nullptr; SDL_Renderer *r = nullptr; SDL_Texture *texture = nullptr; std::unique_ptr<WindowAudio> audio;
+    if (!headless) {
+        if (hidden) SDL_SetHint(SDL_HINT_RENDER_DRIVER, "software");
+        SDL_SetMainReady(); sdl_require(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO), "SDL init");
+        w = SDL_CreateWindow("Sunset Riders EAC 4P | replay", 864, 708, hidden ? SDL_WINDOW_HIDDEN : SDL_WINDOW_RESIZABLE); sdl_require(w != nullptr, "window");
+        r = SDL_CreateRenderer(w, nullptr); sdl_require(r != nullptr, "renderer");
+        SDL_SetRenderLogicalPresentation(r, 576, 472, SDL_LOGICAL_PRESENTATION_LETTERBOX);
+        texture = SDL_CreateTexture(r, SDL_PIXELFORMAT_RGB24, SDL_TEXTUREACCESS_STREAMING, 288, 224); sdl_require(texture != nullptr, "framebuffer texture");
+        SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);
+        audio = std::make_unique<WindowAudio>(); if (hidden) audio->gain(-1.0f);
+        window_audio_sink(m.sound.get(), [&](int16_t left, int16_t right) { audio->push(left, right); });
+    }
+    uint64_t next = SDL_GetTicksNS(); bool quit = false; std::string message;
+    while (!quit) {
+        if (w) { SDL_Event e; while (SDL_PollEvent(&e)) if (e.type == SDL_EVENT_QUIT || (e.type == SDL_EVENT_KEY_DOWN && e.key.scancode == SDL_SCANCODE_ESCAPE)) quit = true; }
+        if (frame < replay.info.frames && stopped == UINT64_MAX) {
+            const auto lanes = replay.At(frame);
+            advance(m, std::span<const uint16_t>(lanes.data(), replay.info.seats)); ++frame;
+            if (auto it = checks.find(frame); it != checks.end()) {
+                std::vector<uint8_t> own; rollback_save(m, own);
+                if (uint32_t(crc32(0, own.data(), uInt(own.size()))) == it->second) ++matched; else stopped = frame;
+            }
+            if (audio) audio->flush();
+        } else if (message.empty()) {
+            message = stopped != UINT64_MAX ? "Replay stops matching at frame " + std::to_string(stopped) : "End of the replay";
+            if (headless || hidden) quit = true;
+        }
+        if (w) {
+            sdl_require(SDL_UpdateTexture(texture, nullptr, window_video_rgb(m.video.get()), 288 * 3), "texture update");
+            SDL_SetRenderDrawColor(r, 12, 12, 16, 255); SDL_RenderClear(r);
+            SDL_FRect game{0, 24, 576, 448}; SDL_RenderTexture(r, texture, nullptr, &game);
+            DrawNames(r, names, replay.info.seats);
+            SDL_SetRenderDrawColor(r, 230, 230, 235, 255);
+            const std::string title = "Replay | " + replay.info.started + " | frame " + std::to_string(frame) + " of " + std::to_string(replay.info.frames) + " | Esc quits";
+            SDL_RenderDebugText(r, 8, 8, title.c_str());
+            DrawMessage(r, message);
+            if (quit && !capture.empty()) if (auto *shot = SDL_RenderReadPixels(r, nullptr)) { SDL_SaveBMP(shot, (capture + ".bmp").c_str()); SDL_DestroySurface(shot); }
+            SDL_RenderPresent(r);
+            if (!hidden) { next += 16666667ull; const uint64_t now = SDL_GetTicksNS(); if (next > now) SDL_DelayNS(next - now); else next = now; }
+        }
+    }
+    if (stopped != UINT64_MAX)
+        std::fprintf(stderr, "replay: stops matching at frame %llu; %llu of %zu checkpoints matched before\n", static_cast<unsigned long long>(stopped), static_cast<unsigned long long>(matched), checks.size());
+    else if (frame >= replay.info.frames)
+        std::fprintf(stderr, "replay: played to its end; %llu of %zu checkpoints matched\n", static_cast<unsigned long long>(matched), checks.size());
+    if (stopped == UINT64_MAX && frame < replay.info.frames) std::fprintf(stderr, "replay: stopped by the player at frame %llu\n", static_cast<unsigned long long>(frame));
+    if (texture) SDL_DestroyTexture(texture); if (r) SDL_DestroyRenderer(r); if (w) SDL_DestroyWindow(w); audio.reset(); if (w) SDL_Quit();
+    return stopped != UINT64_MAX ? 1 : 0;
+}
 }
 
 int main(int argc, char **argv) {
     try {
         recomp::match::Options o;
         o.capacity = 4; o.scope = recomp::net::BindScope::Any; o.delay = 2;
-        std::string log, capture; uint64_t autoSeed = 0, frames = 0; bool autoPlay = false, hidden = false, mode = false;
+        std::string log, capture, replayFile, replays; uint64_t autoSeed = 0, frames = 0; bool autoPlay = false, hidden = false, mode = false, headless = false, replaysSet = false;
         for (int i = 1; i < argc; ++i) {
             const std::string a = argv[i];
             auto next = [&]() -> std::string { if (i + 1 >= argc) throw std::runtime_error("missing value for " + a); return argv[++i]; };
@@ -58,9 +152,12 @@ int main(int argc, char **argv) {
             else if (a == "--capture") capture = next();
             else if (a == "--hidden") hidden = true;
             else if (a == "--loopback") o.scope = recomp::net::BindScope::Loopback;
+            else if (a == "--replay") replayFile = next();
+            else if (a == "--replays") { replays = next(); replaysSet = true; }
+            else if (a == "--headless") headless = true;
             else throw std::runtime_error("unknown option " + a);
         }
-        if (!mode) throw std::runtime_error("usage: Sunset-Riders-Online --host PORT | --join ADDRESS:PORT [--players N] [--start N] [--late] [--locals N] [--name NAME]");
+        if (!mode && replayFile.empty()) throw std::runtime_error("usage: Sunset-Riders-Online --host PORT | --join ADDRESS:PORT [--players N] [--start N] [--late] [--locals N] [--name NAME] [--replays FOLDER|none] | --replay FILE [--headless]");
         { std::string name; for (char c : o.name) if (c >= 32 && c < 127 && name.size() < 16) name += c; o.name = name.empty() ? "Player" : name; }
         if (!log.empty()) { o.checkpointLog = std::fopen(log.c_str(), "w"); if (!o.checkpointLog) throw std::runtime_error("the checkpoint log could not be opened"); }
 
@@ -71,6 +168,9 @@ int main(int argc, char **argv) {
         sunset_rom_payload_sink = &verified_payload; auto machine = load_window_machine(""); sunset_rom_payload_sink = nullptr;
         auto &m = *machine;
         const std::string rom = state_file::hex(state_file::sha256(verified_payload)); verified_payload.clear();
+        if (!replayFile.empty()) return PlayReplay(m, rom, replayFile, headless, hidden || autoPlay, capture);
+        // (the match's replay goes to the replays folder beside the program unless --replays says otherwise or none)
+        if (!replaysSet) replays = (std::filesystem::path(SDL_GetBasePath() ? SDL_GetBasePath() : "") / "replays").string();
         const std::string profile = "sunset-riders-eac|rom-" + rom + "|lanes-held6-coin|assists-0|turbo-0";
         o.profile.assign(profile.begin(), profile.end());
         o.stateBytes = 1024 * 1024;
@@ -101,8 +201,15 @@ int main(int argc, char **argv) {
         m.run_until(120ull * SunsetBus::frame_ticks); // (the same short power-on on every PC)
         bindAudio();
 
+        // The match's replay: its start (the state every PC begins from), a checksum every 60 frames, the names seated
+        SunsetReplay record; rollback_save(m, record.state); record.info.started = LocalTime("%Y-%m-%dT%H:%M:%S");
+        const std::string fileTime = LocalTime("%Y-%m-%d_%H-%M-%S");
+        std::map<uint64_t, uint32_t> checks; uint32_t lastCrc = 0; std::array<std::string, 4> seated{};
+        recomp::match::SeatMatch match;
         recomp::match::Backend b;
-        b.save = [&](std::vector<uint8_t> &state) { rollback_save(m, state); return !state.empty(); };
+        b.save = [&](std::vector<uint8_t> &state) { rollback_save(m, state); lastCrc = uint32_t(crc32(0, state.data(), uInt(state.size()))); return !state.empty(); };
+        // (GekkoNet's frame N is the board after N + 1 frames: its checksum is kept under the frames run)
+        b.saved = [&](int frame) { const uint64_t run = match.EpochBase() + uint64_t(frame) + 1; if (run % 60 == 0) checks[run] = lastCrc; return true; };
         b.load = [&](std::span<const uint8_t> state) { rollback_load(m, state); return true; };
         b.frame = [&](std::span<const uint16_t> lanes, bool again) {
             // (a frame played again is neither seen nor heard)
@@ -111,7 +218,6 @@ int main(int argc, char **argv) {
         };
         b.hash = [&] { std::vector<uint8_t> bytes; rollback_save(m, bytes); return uint32_t(crc32(0, bytes.data(), uInt(bytes.size()))); };
         b.hashSaved = true;
-        recomp::match::SeatMatch match;
         std::string error;
         if (!match.Start(o, std::move(b), error)) throw std::runtime_error(error);
 
@@ -199,23 +305,10 @@ int main(int argc, char **argv) {
             sdl_require(SDL_UpdateTexture(texture, nullptr, rgb, 288 * 3), "texture update");
             SDL_SetRenderDrawColor(r, 12, 12, 16, 255); SDL_RenderClear(r);
             SDL_FRect game{0, 24, 576, 448}; SDL_RenderTexture(r, texture, nullptr, &game);
-            // Every seated player's name under that player's money, on a dark strip (an empty seat shows nothing)
             const auto names = match.Names();
-            SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
-            for (unsigned seat = 0; seat < o.capacity && seat < 4; ++seat) {
-                if (names[seat].empty() || overlay.menu.IsOpen()) continue;
-                std::string label = names[seat]; if (label.size() > 16) label.resize(16);
-                const float left = float(seat) * 144.0f + 6.0f, width = float(label.size()) * 8.0f + 8.0f;
-                SDL_SetRenderDrawColor(r, 0, 0, 0, 150); SDL_FRect back{left, 76, width, 12}; SDL_RenderFillRect(r, &back);
-                const auto &c = kSeatColour[seat]; SDL_SetRenderDrawColor(r, c.r, c.g, c.b, 255);
-                SDL_RenderDebugText(r, left + 4, 78, label.c_str());
-            }
-            // The match's state while there is something to say (waiting, connecting, a change of players, the end)
-            if (const std::string state = match.Message(); !state.empty()) {
-                const float width = float(std::min<size_t>(state.size(), 64)) * 8.0f + 24.0f;
-                SDL_SetRenderDrawColor(r, 0, 0, 0, 190); SDL_FRect box{(576 - width) / 2, 236, width, 28}; SDL_RenderFillRect(r, &box);
-                SDL_SetRenderDrawColor(r, 255, 220, 80, 255); SDL_RenderDebugText(r, box.x + 12, 246, state.substr(0, 64).c_str());
-            }
+            for (unsigned seat = 0; seat < 4; ++seat) if (!names[seat].empty()) seated[seat] = names[seat]; // (for the replay)
+            if (!overlay.menu.IsOpen()) DrawNames(r, names, o.capacity);
+            DrawMessage(r, match.Message()); // (waiting, connecting, a change of players, the end)
             std::vector<uint32_t> barPixels(576 * 472, 0xff000000); bar.Draw(barPixels.data(), 576, 472);
             sdl_require(SDL_UpdateTexture(barTexture, nullptr, barPixels.data(), 576 * 4), "bar pixels");
             SDL_FRect strip{0, 0, 576, float(bar.Height())}; SDL_RenderTexture(r, barTexture, &strip, &strip);
@@ -238,6 +331,26 @@ int main(int argc, char **argv) {
         std::fprintf(stderr, "sunset-online: %llu frames, global frame %llu, epoch %llu, %s\n", static_cast<unsigned long long>(shown),
                      static_cast<unsigned long long>(match.Frame()), static_cast<unsigned long long>(match.Epoch()), match.Message().c_str());
         const bool failed = match.Failed();
+        // The match's replay: every confirmed frame from the start (a minute at least), with its checksums
+        if (std::vector<uint16_t> history; replays != "none" && match.ConfirmedHistory(history) && history.size() >= size_t(60) * o.capacity) {
+            const uint64_t count = history.size() / o.capacity;
+            record.info.identity = SUNSET_REPLAY_IDENTITY; record.info.rom = rom; record.info.version = SUNSET_VERSION;
+            record.info.role = o.host ? "host" : "guest"; record.info.seats = o.capacity; record.info.frames = count;
+            record.info.players.assign(seated.begin(), seated.begin() + o.capacity);
+            SunsetReplay::Lanes last{0xffff, 0xffff, 0xffff, 0xffff};
+            for (uint64_t f = 0; f < count; ++f) {
+                SunsetReplay::Lanes lanes{}; for (unsigned p = 0; p < o.capacity; ++p) lanes[p] = history[size_t(f) * o.capacity + p];
+                if (lanes != last) { record.inputs[f] = lanes; last = lanes; }
+            }
+            for (const auto &[frame, crc] : checks) if (frame <= count) record.checks.emplace_back(frame, crc);
+            std::string names;
+            for (const auto &n : record.info.players) { std::string clean; for (char c : n) if (std::isalnum(static_cast<unsigned char>(c))) clean += c; if (!clean.empty()) names += (names.empty() ? "" : "-") + clean; }
+            std::error_code ec; std::filesystem::create_directories(replays, ec);
+            const std::string path = (std::filesystem::path(replays) / (fileTime + "_ssriders_" + (names.empty() ? std::string("match") : names) + ".fareplay")).string();
+            std::string why;
+            if (record.Save(path, why)) std::fprintf(stderr, "replay: %s (%llu frames, %zu checksums)\n", path.c_str(), static_cast<unsigned long long>(count), record.checks.size());
+            else std::fprintf(stderr, "replay: %s\n", why.c_str());
+        }
         match.Stop();
         if (o.checkpointLog) std::fclose(o.checkpointLog);
         SDL_DestroyTexture(barTexture); SDL_DestroyTexture(texture); SDL_DestroyRenderer(r); SDL_DestroyWindow(w);

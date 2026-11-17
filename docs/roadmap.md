@@ -10,7 +10,7 @@ The source builds the local Windows runtime and an experimental online window. T
 - [x] Allow a new player to join an available seat during a match: the joining PC rebuilds the state from its own start and the confirmed inputs, and every PC checks it before continuing.
 - [x] Keep the remaining players running when a guest leaves; a host left alone waits for players; packets from old sessions are rejected.
 - [x] Disable offline cheats, turbo, states and pause in online sessions (the menu's online mode).
-- [ ] Preserve confirmed replay inputs and sound through session changes.
+- [x] Save a replay of every online match (.fareplay format 2: the confirmed inputs of every seat from the first frame, across players joining and leaving, checksums every 60 frames) and play it back, refusing another ROM set or gameplay identity.
 - [ ] Define spectator capacity and behaviour before exposing spectator controls.
 - [ ] Validate complete credits on separate PCs across the Internet, controller input, disconnect/reconnect, sound continuity and replay playback.
 

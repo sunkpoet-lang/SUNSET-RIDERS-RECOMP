@@ -1,0 +1,36 @@
+# The sources that decide Sunset Riders' emulated state, for the replays' gameplay identity (CMake hashes every file
+# these patterns match, in order, into SUNSET_REPLAY_IDENTITY). A replay plays on any build with the same identity.
+# The menu, the window, the online room and the documentation are left out: changing them keeps every replay.
+src/window_machine.cpp
+src/window_sound.cpp
+src/window_pcm.cpp
+src/z80_core.cpp
+src/seat_board.h
+src/board_bus.h
+src/board_state.h
+src/boundary_cpu_probe.cpp
+src/cpu_boundary_guard.h
+src/cpu_dispatch_guard.h
+src/eeprom_er5911.h
+src/fm_*.h
+src/inputs_four.h
+src/pcm_*.h
+src/priority_k053251.h
+src/sound_ports.h
+src/sprite_k053245.h
+src/state_*.h
+src/primitive_registry.h
+src/streaming_audio.h
+src/audio_capture.h
+src/dual_sound_api.h
+src/sound_checkpoint_api.h
+src/persistent_checkpoint_api.h
+host/z80/*
+host/pcm/*
+third_party/reference/stub/*
+third_party/reference/m68000_spaces.cpp
+third_party/reference/mame/m68000/*
+third_party/reference/sound/*
+third_party/reference/ymfm/*
+third_party/z80/*
+third_party/devices/k053260*

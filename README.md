@@ -65,6 +65,14 @@ python tools/run.py --rom "C:/my-roms/ssriders.zip" --exe "build-clean/Sunset-Ri
 - Each player's name is shown under that player's score. Esc opens the menu; online, states, cheats, turbo and pause are off for everyone and the game runs on.
 - Every PC needs the same build and the same verified ROM set; a different one is refused.
 
+Every PC saves a replay of the whole match when it ends (a minute or more), in `replays` beside the program (`--replays FOLDER`, or `--replays none`). It holds the confirmed inputs of all four seats from the first frame, even across players joining and leaving, and a checksum every 60 frames. Watch one with:
+
+```sh
+python tools/run.py --rom "C:/my-roms/ssriders.zip" --exe "build-clean/Sunset-Riders-Online.exe" -- --replay "build-clean/replays/2026-11-16_20-14-27_ssriders_Host-Guest.fareplay"
+```
+
+It plays in the window (Esc quits) and says where it stops matching, if it does; `--headless` only checks it. A replay of another ROM set, or made with another version of the game's emulation, is refused.
+
 `python tools/online_check.py --rom "C:/my-roms/ssriders.zip"` runs the online checks on one PC: the faster CPU loop against the original one, with and without rollbacks; four headless PCs joining and leaving; and hidden online windows with four seats.
 
 ## What is ready, and what remains

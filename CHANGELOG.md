@@ -4,6 +4,7 @@
 
 ## [2026-11-16] - Four-player online play (experimental)
 
+- feat: save a replay of every online match on every PC (.fareplay format 2: the confirmed inputs of all four seats from the first frame, across players joining and leaving, checksums every 60 frames, a gameplay identity from the sources replay_identity.txt lists) and play it back with --replay, in the window or headless, refusing another ROM set or identity
 - perf: run the main 68000 in slices up to the board's next event, and read the program ROM and work RAM without a board sync: a frame goes from about 14 to under 7 ms with the same game, picture and sound (SUNSET_LOCKSTEP=1 keeps the stepped loop); two diagnostic counters of the native reference change with it
 - feat: add Sunset-Riders-Online: rollback for up to four players on up to four PCs (GekkoNet, pinned; the seat layer in src/net), one or two players per PC, joining and leaving during the match, each player's name under their score, and the menu's online mode (no states, cheats, turbo or pause)
 - feat: save and load rollback's own state (CPU, board, sound, clock) in memory in well under a millisecond; frames played again are neither drawn nor heard
