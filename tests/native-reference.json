@@ -16,7 +16,7 @@
   "sprite_ram_writes": 389519,
   "tile_writes": 409804,
   "protection_reads": 7414,
-  "max_main_lookahead_ticks": 435,
+  "max_main_lookahead_ticks": 0,
   "rendered_frames": 1500,
   "frame_hash": 2653112894486834830,
   "nonblack_pixels": 58209,
@@ -26,7 +26,7 @@
   "sound_instructions": 19364564,
   "sound_irq_requests": 64,
   "sound_irq_acks": 64,
-  "max_sound_lead_ticks": 27,
+  "max_sound_lead_ticks": 24,
   "reply_ports": [
     128,
     0

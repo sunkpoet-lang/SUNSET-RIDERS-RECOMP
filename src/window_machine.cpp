@@ -23,6 +23,16 @@ struct MachineCheckpoint {
 static bool machine_states_equal(const MachineCheckpoint& a,const MachineCheckpoint& b){
     return a.schema==b.schema&&a.scenario_identity==b.scenario_identity&&a.cpu==b.cpu&&a.board==b.board&&a.host==b.host&&sound_checkpoints_equal(a.sound.get(),b.sound.get())&&video_checkpoints_equal(a.video.get(),b.video.get());
 }
+// Reads of the program ROM and the work RAM are pure memory (no clock, no side effect, nothing else writes them):
+// they skip the board sync. Every other access, and every write, still syncs.
+static u16 memory_read(offs_t a,u16 m){
+    const offs_t x=a&0xffffff;
+    if(x<0xc0000||(x>=0x104000&&x<0x108000))return bus->read(a,m);
+    return read_bus(a,m);
+}
+// (an embedding program, such as the online window, keeps the verified ROM regions it was given: their SHA-256 is
+// part of what every PC of a match must share)
+static std::vector<uint8_t>* sunset_rom_payload_sink=nullptr;
 struct ExperimentMachine {
     SunsetBus board;
     ProbeCpu cpu;
@@ -30,7 +40,7 @@ struct ExperimentMachine {
     VideoOwner video{nullptr,video_destroy};
     std::vector<SunsetInputEvent> events;std::function<void(uint64_t)> live_input;std::function<void()> before_frame;
     uint64_t elapsed=0,instructions=0,max_main_lead=0,next_frame_tick=0,frame=0,drawn=0,event=0,scenario_identity=0;
-    bool stepping=false,irq_line=false;
+    bool stepping=false,irq_line=false;int budget=1;bool lockstep=std::getenv("SUNSET_LOCKSTEP")!=nullptr;
     ExperimentMachine(std::vector<uint8_t> p,std::vector<uint8_t> e,std::vector<uint8_t> c,std::vector<uint8_t> m,std::vector<uint8_t> v,std::vector<uint8_t> t,std::vector<SunsetInputEvent> inputs)
       :board(std::move(p),std::move(e)),events(std::move(inputs)){
         board.sprites.rom=std::move(c);sound.reset(dual_create(std::move(m),std::move(v)));video.reset(video_create(std::move(t),board.sprites.rom));
@@ -41,13 +51,13 @@ struct ExperimentMachine {
         board.connected_sound_read=[this](unsigned p){return dual_read(sound.get(),p);};
         board.connected_sound_write=[this](unsigned p,uint8_t v){dual_write(sound.get(),p,v);};
         board.connected_sound_irq=[this](){dual_irq(sound.get());};
-        timed_run=false;attach(cpu,board);
+        timed_run=false;attach(cpu,board);if(!lockstep)for(int space:{int(AS_PROGRAM),int(AS_OPCODES)})cpu.space(space).read16=memory_read;
         sync_time=[this](){sync();};sync_irq=[this](){update_irq();};
-        cpu.instruction_hook=[this](offs_t){++instructions;if(timed_run)sync();};
+        cpu.instruction_hook=[this](offs_t){++instructions;if(timed_run&&lockstep)sync();};
     }
     void update_irq(){if(irq_line!=board.tiles.irq){irq_line=board.tiles.irq;cpu.set_input_line(4,irq_line?ASSERT_LINE:CLEAR_LINE);}}
     void sync(){
-        int consumed=stepping?1-cpu.cycles_left():0;
+        int consumed=stepping?budget-cpu.cycles_left():0;
         uint64_t now=elapsed+uint64_t(std::max(consumed,0))*3;
         if(now<board.master_ticks){max_main_lead=std::max(max_main_lead,board.master_ticks-now);now=board.master_ticks;}
         while(next_frame_tick<=now){
@@ -57,10 +67,22 @@ struct ExperimentMachine {
         }
         board.advance(now);dual_advance(sound.get(),now);update_irq();
     }
+    // The main CPU runs in slices up to the board's next event (a vblank edge, the frame's input tick, the
+    // watchdog's deadline, the target): every bus access still syncs the board at its own cycle, and a slice ends at
+    // the first stop at or past the event, where a one-step-at-a-time loop also handles it. Same game, picture and
+    // sound as stepping (tools/online_check.py trace); SUNSET_LOCKSTEP=1 keeps the stepped loop, to compare.
+    int slice(uint64_t target)const{
+        const uint64_t at=board.master_ticks,phase=at%SunsetBus::frame_ticks,base=at-phase;
+        uint64_t edge=phase<SunsetBus::visible_start?base+SunsetBus::visible_start:phase<SunsetBus::vblank_start?base+SunsetBus::vblank_start:base+SunsetBus::frame_ticks+SunsetBus::visible_start;
+        uint64_t until=std::min({target,edge,next_frame_tick});
+        if(board.watchdog.armed&&board.watchdog.deadline>at)until=std::min(until,board.watchdog.deadline);
+        if(until<=elapsed)return 1;
+        return int(std::min<uint64_t>((until-elapsed+2)/3,1u<<20));
+    }
     void run_until(uint64_t target){
         if(target<elapsed||target>sunset_session::max_master)throw std::runtime_error("invalid experiment target");
         timed_run=true;
-        try{while(elapsed<target){sync();stepping=true;int used=cpu.run(1);stepping=false;
+        try{while(elapsed<target){sync();budget=lockstep?1:slice(target);stepping=true;int used=cpu.run(budget);stepping=false;
             if(used<=0)throw std::runtime_error("main CPU made no progress");elapsed+=uint64_t(used)*3;sync();}}
         catch(...){timed_run=false;stepping=false;throw;}
         timed_run=false;
@@ -243,7 +265,7 @@ static void resource_test(){
     std::cout<<"{\"status\":\"passed\",\"embedded_game_icon_sizes\":7}\n";
 }
 static std::unique_ptr<ExperimentMachine> load_window_machine(const std::string&scenario){
-    _setmode(_fileno(stdin),_O_BINARY);auto take=[](size_t n){std::vector<uint8_t>b(n);std::cin.read(reinterpret_cast<char*>(b.data()),n);if(std::cin.gcount()!=std::streamsize(n))throw std::runtime_error("truncated verified ROM pipe");return b;};
+    _setmode(_fileno(stdin),_O_BINARY);auto take=[](size_t n){std::vector<uint8_t>b(n);std::cin.read(reinterpret_cast<char*>(b.data()),n);if(std::cin.gcount()!=std::streamsize(n))throw std::runtime_error("truncated verified ROM pipe");if(sunset_rom_payload_sink)sunset_rom_payload_sink->insert(sunset_rom_payload_sink->end(),b.begin(),b.end());return b;};
     auto p=take(0xc0000),e=take(128),c=take(0x200000),m=take(0x10000),v=take(0x100000),t=take(0x100000);if(std::cin.peek()!=EOF)throw std::runtime_error("extra ROM pipe data");
     auto events=scenario.empty()?std::vector<SunsetInputEvent>{}:read_scenario(scenario,sunset_session::max_frames);
     return std::make_unique<ExperimentMachine>(std::move(p),std::move(e),std::move(c),std::move(m),std::move(v),std::move(t),std::move(events));
@@ -356,7 +378,13 @@ static void long_soak(ExperimentMachine&m,const std::string&capture){
     m.live_input={};
 }
 
-int main(int argc,char**argv){try{
+// (SUNSET_EMBEDDED_MACHINE: another program includes this machine and has its own entry point)
+#ifdef SUNSET_EMBEDDED_MACHINE
+#define SUNSET_WINDOW_MAIN sunset_local_window_main
+#else
+#define SUNSET_WINDOW_MAIN main
+#endif
+int SUNSET_WINDOW_MAIN(int argc,char**argv){try{
     if(argc==2&&std::string(argv[1])=="--resource-test"){resource_test();return 0;}
     if(argc<2||std::string(argv[1])!="--window")return diagnostic_main(argc,argv);
     bool unpaced=false,qa=false,menu_qa=false,live_test=false,assist_test=false,bar_qa=false,soak_test=false;uint64_t stop=sunset_session::max_frames;std::string scenario,capture;
